@@ -1,0 +1,33 @@
+group = "{{GROUP_NAME}}"
+version = "{{VERSION_NAME}}"
+
+plugins{
+    java
+    kotlin
+    `maven-publish`
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation("com.google.protobuf:protobuf-java:3.19.4")
+    implementation("com.google.protobuf:protobuf-kotlin:3.19.4")
+}
+
+configure<JavaPluginExtension> {
+    this.targetCompatibility = JavaVersion.VERSION_1_8
+    this.sourceCompatibility = JavaVersion.VERSION_1_8
+}
+
+configure<PublishingExtension> {
+    publications {
+        create<MavenPublication>("maven") {
+            groupId = project.group as String
+            artifactId = project.name
+            version = project.version as String
+            from(components["java"])
+        }
+    }
+}

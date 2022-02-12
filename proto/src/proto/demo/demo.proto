@@ -1,0 +1,45 @@
+syntax = "proto3";
+package demo;
+option java_package = "dev.ishikawa.demo.dd_flink";
+option java_multiple_files = true;
+
+message PUserActivityEvent {
+  string eventId = 1;
+
+  string userId = 2;
+
+  message PUserActivity {
+    UserActionType actionType = 1;
+    enum UserActionType {
+      USER_ACTION_TYPE_UNSPECIFIED = 0;
+      CLICK_URL = 1;
+      PAGE_BACK = 2;
+      PAGE_FORWARD = 3;
+      SCROLL_TO_BOTTOM =4 ;
+      SCROLL_TO_TOP = 5;
+    }
+
+    string data = 2;
+  }
+  PUserActivity action = 3;
+
+  int64 ts = 4;
+}
+
+message PUserProfileEvent {
+  string eventId = 1;
+
+  string userId = 2;
+
+  enum PUserProfileEventType {
+    USER_PROFILE_EVENT_TYPE = 0;
+    CREATION = 1;
+    UPDATE = 2;
+    DELETION = 3;
+  }
+  PUserProfileEventType type = 3;
+
+  string data = 4;
+
+  int64 ts = 5;
+}
