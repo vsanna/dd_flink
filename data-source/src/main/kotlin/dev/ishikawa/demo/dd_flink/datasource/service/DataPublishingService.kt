@@ -8,8 +8,12 @@ import dev.ishikawa.demo.dd_flink.datasource.service.DataGenerator.genUserActivi
 import dev.ishikawa.demo.dd_flink.datasource.service.DataGenerator.genUserActivityProtobufEvent
 import dev.ishikawa.demo.dd_flink.datasource.service.DataGenerator.genUserProfileEvent
 import dev.ishikawa.demo.dd_flink.datasource.service.DataGenerator.genUserProfileProtobufEvent
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -25,7 +29,7 @@ class DataPublishingService(
     private val userProfileEventProtobufProducer: KafkaProducer<String, PUserProfileEvent>,
     private val userActivityEventProtobufProducer: KafkaProducer<String, PUserActivityEvent>
 ) {
-    fun execute() = runBlocking {
+    suspend fun execute() = scope.async {
         // json
         launch { loopUserProfileEvent() }
         launch { loopUserActivityEvent() }
@@ -41,19 +45,19 @@ class DataPublishingService(
             val event = genUserProfileEvent()
             userProfileEventProducer.send(
                 ProducerRecord(
-                    "user-profile-event-topic",
+                    USER_PROFILE_EVENT_TOPIC,
                     event.eventId,
                     event
                 )
             ) { metadata, exception ->
                 if (exception != null) {
-                    log.error("failed in sending message: metadata =  $metadata, event = $event", exception)
+                    log.error("failed in sending UserProfileEvent. message: metadata =  $metadata, event = $event", exception)
                 } else {
-                    log.info("sent UserProfileEvent event: $event")
+                    log.info("sent UserProfileEvent eventId: ${event.eventId}")
                 }
             }
 
-            delay(5000)
+            delay(PROFILE_INTERVAL_MSEC)
         }
     }
 
@@ -63,18 +67,18 @@ class DataPublishingService(
             val event = genUserActivityEvent()
             userActivityEventProducer.send(
                 ProducerRecord(
-                    "user-activity-event-topic",
+                    USER_ACTIVITY_EVENT_TOPIC,
                     event.eventId,
                     event
                 )
             ) { metadata, exception ->
                 if (exception != null) {
-                    log.error("failed in sending message: metadata =  $metadata, event = $event", exception)
+                    log.error("failed in sending UserActivityEvent. message: metadata =  $metadata, event = $event", exception)
                 } else {
-                    log.info("sent UserActivityEvent event : $event")
+                    log.info("sent UserActivityEvent eventId : ${event.eventId}")
                 }
             }
-            delay(1000)
+            delay(ACTIVITY_INTERVAL_MSEC)
         }
     }
 
@@ -85,19 +89,19 @@ class DataPublishingService(
             val event = genUserProfileProtobufEvent()
             userProfileEventProtobufProducer.send(
                 ProducerRecord(
-                    "user-profile-event-protobuf-topic",
+                    USER_PROFILE_EVENT_PROTOBUF_TOPIC,
                     event.eventId,
                     event
                 )
             ) { metadata, exception ->
                 if (exception != null) {
-                    log.error("failed in sending message: metadata =  $metadata, event = $event", exception)
+                    log.error("failed in sending PUserProfileEvent. message: metadata =  $metadata, event = $event", exception)
                 } else {
-                    log.info("sent PUserProfileEvent event: $event")
+                    log.info("sent PUserProfileEvent eventId: ${event.eventId}")
                 }
             }
 
-            delay(5000)
+            delay(PROFILE_INTERVAL_MSEC)
         }
     }
 
@@ -107,22 +111,32 @@ class DataPublishingService(
             val event = genUserActivityProtobufEvent()
             userActivityEventProtobufProducer.send(
                 ProducerRecord(
-                    "user-activity-event-protobuf-topic",
+                    USER_ACTIVITY_EVENT_PROTOBUF_TOPIC,
                     event.eventId,
                     event
                 )
             ) { metadata, exception ->
                 if (exception != null) {
-                    log.error("failed in sending message: metadata =  $metadata, event = $event", exception)
+                    log.error("failed in sending PUserActivityEvent. message: metadata =  $metadata, event = $event", exception)
                 } else {
-                    log.info("sent PUserActivityEvent event : $event")
+                    log.info("sent PUserActivityEvent eventId : ${event.eventId}")
                 }
             }
-            delay(1000)
+            delay(ACTIVITY_INTERVAL_MSEC)
         }
     }
 
     companion object {
+        private val scope = CoroutineScope(Dispatchers.IO)
+
         private val log = LoggerFactory.getLogger(DataPublishingService::class.java)
+
+        const val USER_PROFILE_EVENT_TOPIC = "user-profile-event-topic"
+        const val USER_ACTIVITY_EVENT_TOPIC = "user-activity-event-topic"
+        const val USER_PROFILE_EVENT_PROTOBUF_TOPIC = "user-profile-event-protobuf-topic"
+        const val USER_ACTIVITY_EVENT_PROTOBUF_TOPIC = "user-activity-event-protobuf-topic"
+
+        private const val ACTIVITY_INTERVAL_MSEC = 5000L
+        private const val PROFILE_INTERVAL_MSEC = 10000L
     }
 }

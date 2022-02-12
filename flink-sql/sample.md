@@ -47,7 +47,7 @@ CREATE TABLE UserActivityEvent (
 ) WITH (
     'connector' = 'kafka',
     'topic' = 'user-activity-event-topic',
-    'properties.bootstrap.servers' = 'kafka:9092',
+    'properties.bootstrap.servers' = 'kafka_broker:9092',
     -- 'properties.group.id' = 'testGroup',
     'scan.startup.mode' = 'earliest-offset',
     'value.format' = 'json'
@@ -69,7 +69,7 @@ CREATE TABLE UserProfileEvent(
 ) WITH (
     'connector' = 'kafka',
     'topic' = 'user-profile-event-topic',
-    'properties.bootstrap.servers' = 'kafka:9092',
+    'properties.bootstrap.servers' = 'kafka_broker:9092',
     -- 'properties.group.id' = 'testGroup',
     'scan.startup.mode' = 'earliest-offset',
     'value.format' = 'json'
@@ -102,7 +102,7 @@ CREATE TABLE PUserActivityEvent (
 ) WITH (
     'connector' = 'protobuf',
     'topic' = 'user-activity-event-protobuf-topic',
-    'properties.bootstrap.servers' = 'kafka:9092'
+    'properties.bootstrap.servers' = 'kafka_broker:9092',
     -- 'properties.group.id' = 'testGroup',
     -- 'scan.startup.mode' = 'earliest-offset',
     -- 'value.format' = 'json'

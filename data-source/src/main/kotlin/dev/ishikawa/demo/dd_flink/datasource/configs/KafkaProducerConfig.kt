@@ -47,15 +47,15 @@ open class KafkaProducerConfig {
 }
 
 data class UserActivityEvent(
-    val eventId: String,
-    val userId: String,
-    val action: UserAction,
-    val ts: Long
+    val eventId: String = "",
+    val userId: String = "",
+    val action: UserAction = UserAction(),
+    val ts: Long = 0
 )
 
 data class UserAction(
-    val actionType: UserActionType,
-    val data: String // stringified json
+    val actionType: UserActionType = UserActionType.CLICK_URL,
+    val data: String = "{}" // stringified json
 )
 
 enum class UserActionType {
@@ -68,11 +68,11 @@ enum class UserActionType {
 
 
 data class UserProfileEvent(
-    val eventId: String,
-    val userId: String,
-    val type: UserProfileEventType,
-    val data: String, // stringified json
-    val ts: Long
+    val eventId: String = "",
+    val userId: String = "",
+    val type: UserProfileEventType = UserProfileEventType.UPDATE,
+    val data: String = "{}", // stringified json
+    val ts: Long = 0
 )
 
 enum class UserProfileEventType {
