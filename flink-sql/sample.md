@@ -1,24 +1,55 @@
-## prerequirement
+## prerequisite
 - Make sure that you have assigned a lot of mem for Docker(or Docker Desktop)
-  - 8+GB is recommended
+  - it's confirmed 8+GB meme is enough
 
-## Start and exec into flink container
+## Start and upload/download necessary jar files 
+To run FlinkSQL with protobuf, it needs some jar files
+1. flink-connector-kafka_2.12-1.14.3.jar
+2. kafka-clients-3.1.0.jar 
+3. kafka-protobuf-serializer-5.5.1.jar
+4. custom-protobuf-format-factory's jar file
+5. my own protobuf's class files
+
+For 4 and 5, we need to build and cp to docker container.
+For 1,2 and 3, we can use curl to download them in docker container.
+
+### start docker containers
 ```shell
+(cd /path/to/dd_flink)
 docker-compose up -d
+```
+
+### build and make jar files, and then cp them to docker container
+```shell
+# these scripts are util shellscripts. you don't need to use them, and you can do as you like
+./custom-protobuf-format-factory/uploadToDocker.sh
+./proto/publishToLocal.sh
+./proto/uploadToDocker.sh
+
 docker exec -it dd_flink_taskmanager1_1 /bin/bash
 ```
 
 
-## Download flink-connector-kafka
+### Download flink-connector-kafka
 ```shell
+docker exec -it dd_flink_taskmanager1_1 /bin/bash
+
+(in a docker container)
 curl -L https://repo1.maven.org/maven2/org/apache/flink/flink-connector-kafka_2.12/1.14.3/flink-connector-kafka_2.12-1.14.3.jar -o flink-connector-kafka.jar
 curl -L https://repo1.maven.org/maven2/org/apache/kafka/kafka-clients/3.1.0/kafka-clients-3.1.0.jar -o kafka-clients.jar
+curl -L https://packages.confluent.io/maven/io/confluent/kafka-protobuf-serializer/5.5.1/kafka-protobuf-serializer-5.5.1.jar -o kafka-protobuf-serializer.jar
 ```
 
 
 ## start Flink SQL
 ```shell
-./bin/sql-client.sh --jar flink-connector-kafka.jar --jar kafka-clients.jar
+./bin/sql-client.sh \
+--jar flink-connector-kafka.jar \
+--jar kafka-clients.jar \
+--jar kafka-protobuf-serializer.jar \
+--jar demo-0.1.0.jar \
+--jar custom-protobuf-format-factory-1.0-SNAPSHOT-all.jar
+
 ```
 
 ## Consume json events via  Flink SQL
@@ -26,15 +57,9 @@ curl -L https://repo1.maven.org/maven2/org/apache/kafka/kafka-clients/3.1.0/kafk
 SET 'sql-client.execution.result-mode' = 'tableau';
 SET 'sql-client.verbose' = 'true';
 
-
-# data class UserProfileEvent(
-#     val eventId: String,
-#     val userId: String,
-#     val type: UserProfileEventType,
-#     val data: String, // stringified json
-#     val timestamp: Long
-# )
 SHOW TABLES;
+
+
 CREATE TABLE UserActivityEvent (
     `eventId` STRING,
     `userId` STRING,
@@ -47,15 +72,14 @@ CREATE TABLE UserActivityEvent (
 ) WITH (
     'connector' = 'kafka',
     'topic' = 'user-activity-event-topic',
-    'properties.bootstrap.servers' = 'kafka_broker:9092',
-    -- 'properties.group.id' = 'testGroup',
-    'scan.startup.mode' = 'earliest-offset',
-    'value.format' = 'json'
+    'properties.bootstrap.servers' = 'kafka_broker:29092',
+    'properties.group.id' = 'flink-sql-user-activity',
+    'value.format' = 'json',
+    'scan.startup.mode' = 'earliest-offset'
 );
 
-SHOW TABLES;
+SELECT COUNT(*) FROM UserActivityEvent;
 
-SELECT * FROM UserActivityEvent LIMIT 3;
 
 CREATE TABLE UserProfileEvent(
     `eventId` STRING,
@@ -69,14 +93,12 @@ CREATE TABLE UserProfileEvent(
 ) WITH (
     'connector' = 'kafka',
     'topic' = 'user-profile-event-topic',
-    'properties.bootstrap.servers' = 'kafka_broker:9092',
-    -- 'properties.group.id' = 'testGroup',
+    'properties.bootstrap.servers' = 'kafka_broker:29092',
     'scan.startup.mode' = 'earliest-offset',
     'value.format' = 'json'
 );
 
 SELECT userId, type, COUNT(*) FROM UserProfileEvent GROUP BY userId, type;
-
 ```
 
 
@@ -85,32 +107,54 @@ SELECT userId, type, COUNT(*) FROM UserProfileEvent GROUP BY userId, type;
 SET 'sql-client.execution.result-mode' = 'tableau';
 SET 'sql-client.verbose' = 'true';
 
-
-# data class UserProfileEvent(
-#     val eventId: String,
-#     val userId: String,
-#     val type: UserProfileEventType,
-#     val data: String, // stringified json
-#     val timestamp: Long
-# )
-SHOW TABLES;
 CREATE TABLE PUserActivityEvent (
     `eventId` STRING,
     `userId` STRING,
     `action` STRING,
     `ts` BIGINT
 ) WITH (
-    'connector' = 'protobuf',
+    'connector' = 'kafka',
     'topic' = 'user-activity-event-protobuf-topic',
-    'properties.bootstrap.servers' = 'kafka_broker:9092',
-    -- 'properties.group.id' = 'testGroup',
-    -- 'scan.startup.mode' = 'earliest-offset',
-    -- 'value.format' = 'json'
+    'properties.bootstrap.servers' = 'kafka_broker:29092',
+    'properties.group.id' = 'flink-sql-user-activity-protobuf',
+    'value.format' = 'custom-protobuf',
+    'scan.startup.mode' = 'earliest-offset',
+    'properties.auto.offset.reset' = 'earliest',
+    'value.custom-protobuf.protobuf.eventclass' = 'USER_ACTIVITY_EVENT'
 );
 
-SHOW TABLES;
+SELECT COUNT(*) FROM PUserActivityEvent;
+SELECT * FROM PUserActivityEvent;
+SELECT userId, COUNT(*) AS cnt FROM PUserActivityEvent GROUP BY userId;
 
-SELECT * FROM PUserActivityEvent LIMIT 3;
+
+
+
+
+
+
+
+CREATE TABLE PUserProfileEvent (
+  `eventId` STRING,
+  `userId` STRING,
+  `type` STRING,
+  `data` STRING
+) WITH (
+  'connector' = 'kafka',
+  'topic' = 'user-profile-event-protobuf-topic',
+  'properties.bootstrap.servers' = 'kafka_broker:29092',
+  'properties.group.id' = 'flink-sql-user-activity-protobuf',
+  'value.format' = 'custom-protobuf',
+  'scan.startup.mode' = 'earliest-offset',
+  'properties.auto.offset.reset' = 'earliest',
+  'value.custom-protobuf.protobuf.eventclass' = 'USER_PROFILE_EVENT'
+);
+
+SELECT COUNT(*) AS count FROM PUserProfileEvent;
+SELECT * FROM PUserProfileEvent;
+SELECT userId, type, COUNT(*) AS cnt FROM PUserProfileEvent GROUP BY userId, type;
+
+
 ```
 
 

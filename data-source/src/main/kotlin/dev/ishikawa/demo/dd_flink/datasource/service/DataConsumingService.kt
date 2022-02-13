@@ -41,8 +41,8 @@ class DataConsumingService(
         launch { loopUserActivityEvent() }
 
         // protobuf
-        launch { loopUserProfileProtobufEvent() }
-        launch { loopUserActivityProtobufEvent() }
+//        launch { loopUserProfileProtobufEvent() }
+//        launch { loopUserActivityProtobufEvent() }
     }
 
     private fun loopUserProfileEvent()  {

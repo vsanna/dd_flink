@@ -1,7 +1,8 @@
+# NOTE: change this directory according to your environment
 cd $HOME/repos/dd_flink/proto/
 
 current_dir=$(pwd)
-script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+script_dir=$HOME/repos/dd_flink/proto/
 
 package=demo
 libdir=$current_dir/out/$package
@@ -12,7 +13,7 @@ mkdir -p $libdir/kotlin $libdir/java
 protoc --proto_path=$script_dir/src/proto --java_out=$libdir/java --kotlin_out=$libdir/kotlin $(find $script_dir/src/proto/$package -iname "*.proto")
 
 # Build
-mkdir $libdir/src/main $libdir/buildSrc
+mkdir -p $libdir/src/main $libdir/buildSrc
 cp -r $libdir/kotlin $libdir/java $libdir/src/main/
 cd $libdir
 cat ../../scripts/templates/buildSrc.build.gradle.kts.template >| buildSrc/build.gradle.kts
@@ -26,5 +27,3 @@ gradle wrapper
 # Publish
 #./gradlew check assemble publishMavenPublicationToNexusRepository || true
 ./gradlew check assemble publishToMavenLocal || true
-
-

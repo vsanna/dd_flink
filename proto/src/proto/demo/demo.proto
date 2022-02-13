@@ -3,6 +3,10 @@ package demo;
 option java_package = "dev.ishikawa.demo.dd_flink";
 option java_multiple_files = true;
 
+
+// NOTE: the order of top-level messages are defined in ProtobufMessageType.java in custom-protobuf-format-factory.
+// when you change the order, you must update that file too.
+
 message PUserActivityEvent {
   string eventId = 1;
 
