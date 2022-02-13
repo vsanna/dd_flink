@@ -1,4 +1,4 @@
-package org.apache.flink.formats.custom;
+package dev.ishikawa.demo.dd_flink.formatfactory;
 
 public enum ProtobufMessageType {
     USER_ACTIVITY(0),

@@ -1,4 +1,4 @@
-package org.apache.flink.formats.custom;
+package dev.ishikawa.demo.dd_flink.formatfactory;
 
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.typeinfo.TypeInformation;

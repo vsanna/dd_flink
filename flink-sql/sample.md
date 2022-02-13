@@ -10,7 +10,7 @@ To run FlinkSQL with protobuf, it needs some jar files
 4. custom-protobuf-format-factory's jar file
 5. my own protobuf's class files
 
-For 4 and 5, we need to build and cp to docker container.
+For 4 and 5, we need to build and copy them to docker container.
 For 1,2 and 3, we can use curl to download them in docker container.
 
 ### start docker containers
@@ -110,66 +110,47 @@ SET 'sql-client.verbose' = 'true';
 CREATE TABLE PUserActivityEvent (
     `eventId` STRING,
     `userId` STRING,
-    `action` STRING,
+    `action` ROW<actionType STRING, data STRING>,
     `ts` BIGINT
 ) WITH (
     'connector' = 'kafka',
     'topic' = 'user-activity-event-protobuf-topic',
     'properties.bootstrap.servers' = 'kafka_broker:29092',
     'properties.group.id' = 'flink-sql-user-activity-protobuf',
-    'value.format' = 'custom-protobuf',
     'scan.startup.mode' = 'earliest-offset',
     'properties.auto.offset.reset' = 'earliest',
-    'value.custom-protobuf.protobuf.eventclass' = 'USER_ACTIVITY_EVENT'
+  'value.format' = 'custom-protobuf',
+  'value.custom-protobuf.protobuf.eventclass' = 'USER_ACTIVITY'
 );
 
 SELECT COUNT(*) FROM PUserActivityEvent;
 SELECT * FROM PUserActivityEvent;
 SELECT userId, COUNT(*) AS cnt FROM PUserActivityEvent GROUP BY userId;
-
-
-
-
-
-
-
+SELECT userId, action.actionType, COUNT(*) AS cnt FROM PUserActivityEvent GROUP BY userId, action.actionType;
 
 CREATE TABLE PUserProfileEvent (
   `eventId` STRING,
   `userId` STRING,
   `type` STRING,
-  `data` STRING
+  `data` STRING,
+  `ts` BIGINT
 ) WITH (
   'connector' = 'kafka',
   'topic' = 'user-profile-event-protobuf-topic',
   'properties.bootstrap.servers' = 'kafka_broker:29092',
-  'properties.group.id' = 'flink-sql-user-activity-protobuf',
-  'value.format' = 'custom-protobuf',
+  'properties.group.id' = 'flink-sql-user-profile-protobuf',
   'scan.startup.mode' = 'earliest-offset',
   'properties.auto.offset.reset' = 'earliest',
-  'value.custom-protobuf.protobuf.eventclass' = 'USER_PROFILE_EVENT'
+  'value.format' = 'custom-protobuf',
+  'value.custom-protobuf.protobuf.eventclass' = 'USER_PROFILE'
 );
 
 SELECT COUNT(*) AS count FROM PUserProfileEvent;
 SELECT * FROM PUserProfileEvent;
 SELECT userId, type, COUNT(*) AS cnt FROM PUserProfileEvent GROUP BY userId, type;
 
-
 ```
 
-
-# Appendix
-## install kafka cli for debugging
-```shell
-curl -L https://dlcdn.apache.org/kafka/3.1.0/kafka_2.13-3.1.0.tgz -o kafka.tgz
-tar xvf kafka.tgz
-# NOTE: the path directory depends on your env
-./kafka_2.13-3.1.0/bin/kafka-console-consumer.sh --bootstrap-server kafka:9092 --topic user-activity-event-topic
-
-
-apt install iproute2 -y
-apt install dnsutils -y 
-```
 
 # Appendix
 ## install kafka cli for debugging

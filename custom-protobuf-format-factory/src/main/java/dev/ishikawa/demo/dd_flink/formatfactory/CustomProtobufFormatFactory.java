@@ -1,4 +1,4 @@
-package org.apache.flink.formats.custom;
+package dev.ishikawa.demo.dd_flink.formatfactory;
 
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.configuration.ConfigOption;
@@ -16,7 +16,7 @@ import java.util.Set;
 /**
  * CustomProtobufFormatFactory defines and translates options for this format, and then create CustomProtobufDecodingFormat
  * Actual deserialization is handled in CustomProtobufDeserializationSchema
- * @see org.apache.flink.formats.custom.CustomProtobufDeserializationSchema
+ * @see CustomProtobufDeserializationSchema
  * */
 public class CustomProtobufFormatFactory implements DeserializationFormatFactory {
     public static final ConfigOption<ProtobufMessageType> EVENT_CLASS =

@@ -1,1 +1,1 @@
-TBD
+dd_flink is sandbox repo for deep-diving flink

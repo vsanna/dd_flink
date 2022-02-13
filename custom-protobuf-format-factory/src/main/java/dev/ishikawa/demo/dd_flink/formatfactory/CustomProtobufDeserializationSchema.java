@@ -1,6 +1,5 @@
-package org.apache.flink.formats.custom;
+package dev.ishikawa.demo.dd_flink.formatfactory;
 
-import com.google.protobuf.util.JsonFormat;
 import dev.ishikawa.demo.dd_flink.PUserActivityEvent;
 import dev.ishikawa.demo.dd_flink.PUserProfileEvent;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
@@ -22,9 +21,16 @@ import java.util.List;
  * */
 class CustomProtobufDeserializationSchema implements DeserializationSchema<RowData> {
     private final ProtobufMessageType protobufMessageType;
-    private final List<LogicalType> parsingTypes;
     private final DynamicTableSource.DataStructureConverter converter;
+
+    /**
+     * producedTypeInfo is fields of `CREATE TABLE` query. Not fields of message type.
+     * */
     private final TypeInformation<RowData> producedTypeInfo;
+    /**
+     * parsingTypes is list of types of the fields in `CREATE TABLE`
+     * */
+    private final List<LogicalType> parsingTypes;
 
     public CustomProtobufDeserializationSchema(
             ProtobufMessageType protobufMessageType,
@@ -70,23 +76,41 @@ class CustomProtobufDeserializationSchema implements DeserializationSchema<RowDa
                 // 1. parse bytes to PUserActivityEvent
                 // 2. build row object by populating values of PUserActivityEvent
                 PUserActivityEvent event = PUserActivityEvent.parseFrom(slicedBytes);
-                logger.info("event: {}", event);
 
+                /*
+                * mapping `CREATE TABLE` statement into row.
+                * CREATE TABLE PUserActivityEvent (
+                *   `eventId` STRING,
+                *   `userId` STRING,
+                *   `action` ROW<actionType STRING, data STRING>,
+                *   `ts` BIGINT
+                * )
+                * */
                 row.setField(0, event.getEventId());
                 row.setField(1, event.getUserId());
 
-                // NOTE: it's still under research how to pass nested user-defined type
-                String stringifiedAction = JsonFormat.printer().print(event.getAction()).replaceAll("\n", "");
-                logger.info("stringifiedAction: {}", stringifiedAction);
-                row.setField(2, stringifiedAction);
+                // for the case when it's enough just to translate inner object as stringified json.
+                // row.setField(2, JsonFormat.printer().print(event.getAction()).replaceAll("\n", ""));
+
+                final Row innerRow = new Row(RowKind.INSERT, 2); // 2 == length of fields in PUserActivity
+                innerRow.setField(0, event.getAction().getActionType().toString());
+                innerRow.setField(1, event.getAction().getData());
+                row.setField(2, innerRow);
 
                 row.setField(3, event.getTs());
             } else if (protobufMessageType == ProtobufMessageType.USER_PROFILE) {
-                // 1. parse bytes to PUserProfileEvent
-                // 2. build row object by populating values of PUserProfileEvent
                 PUserProfileEvent event = PUserProfileEvent.parseFrom(slicedBytes);
-                logger.info("event: {}", event);
 
+                /*
+                 * mapping `CREATE TABLE` statement into row.
+                 * CREATE TABLE PUserProfileEvent (
+                 *   `eventId` STRING,
+                 *   `userId` STRING,
+                 *   `type` STRING,
+                 *   `data` STRING,
+                 *   `ts` BIGINT
+                 * )
+                 * */
                 row.setField(0, event.getEventId());
                 row.setField(1, event.getUserId());
                 row.setField(2, event.getType().toString());
@@ -124,21 +148,23 @@ class CustomProtobufDeserializationSchema implements DeserializationSchema<RowDa
                 logger.error("passed bytes's length is less than or equal to kafka's header, which means it doesn't have protobuf message. it's unexpected");
                 return null;
             }
-            return Arrays.copyOfRange(originalBytes, kafkaHeaderLength + 1, originalBytes.length);
+            return Arrays.copyOfRange(originalBytes, kafkaHeaderLength, originalBytes.length);
         }
 
         static private int calcLengthOfKafkaHeader(int positionOfMessageInProtofile) {
-            return KAFKA_HEADER_BYTE_LENGTH + calcLengthOfMessageIndeces(positionOfMessageInProtofile);
+            return KAFKA_HEADER_BYTE_LENGTH + calcLengthOfMessageIndexes(positionOfMessageInProtofile);
         }
 
         /**
          * Currently, assuming that passed message type is always located in top-level.
-         * So, length of message-index is always same as its position
          *
-         * This method is placeholder for the future when non top-level message types come here
          * */
-        static private int calcLengthOfMessageIndeces(int positionOfMessageInProtofile) {
-            return positionOfMessageInProtofile;
+        static private int calcLengthOfMessageIndexes(int positionOfMessageInProtofile) {
+            if(positionOfMessageInProtofile == 0) {
+                return 1;
+            } else {
+                return 2;
+            }
         }
 
         private static final int KAFKA_HEADER_BYTE_LENGTH = 5;
